@@ -1,0 +1,136 @@
+---
+title: "UFO Sightings in the U.S."
+author: "Margaret Malone"
+output: 
+  html_document:
+    theme: cosmo
+---
+## Introduction  
+Unidentified Flying Objects or UFOs hold a special place in American folklore. Although some call them than deranged conspiracy theories and/or drug-induced hallucinations, UFO sightings have flooded the airways, nightly news broadcasts, and internet forums for decades.  
+  
+With thousands of sightings being reported each year, it's arguably difficult not to wonder if we aren't alone in the universe after all. A poll conducted in 1997 on the 50th anniversary of the Roswell incident (in which "U.S. Army Air Force balloons" allegedly crashed at a ranch near Roswell, New Mexico) revealed that **80% of Americans believe the government is hiding knowledge of alien life forms**.
+  
+Between 1947 and 1969, the government investigated 12,618 UFO sightings during "Project Blue Book," which was launched in response to the Roswell incident. Seven-hundred-and-one sightings were classified as "unidentified" and left at that.^1^   
+More recently, the Pentagon investigated UFOs such as a "40-foot-long Tic Tac" as part of the [Advanced Aviation Threat Identification Program](https://www.cnn.com/2017/12/16/politics/pentagon-ufo-project/index.html).
+  
+"My personal belief is that there is very compelling evidence that we may not be alone," Luis Elizondo, a former Pentagon official told CNN when asked about why UFOs warranted a $22 million project.^2^
+  
+The website of the National UFO Reporting Center ([NUFORC](http://www.nuforc.org/)), "dedicated to the collection and dissemination of objective UFO data," hosts a [UFO Sighting Report Form](http://www.ufocenter.com/reportformsubmit.html). This analysis is based on reports made using this form.  
+  
+### Hypothesis  
+The stereotypical UFO in American pop culture is disc-shaped. This can be proven with a simple Google Images [search](https://www.google.com/search?hl=en&tbm=isch&source=hp&biw=1280&bih=726&ei=Cd3pWsSYMMuc_Qbz1buYCA&q=ufo&oq=ufo&gs_l=img.3..0l10.1134.1536.0.1929.4.4.0.0.0.0.68.192.3.3.0....0...1ac.1.64.img..1.3.192.0...0.yqL-UY8UkBk) of "UFO," which yields thousands of images like this one:  
+  
+![](ufo2.jpg)  
+  
+And in the United States, the stereotypical place to see UFOs in the Midwest. On Forbes' list of [The World's 8 Best Places To Hunt For Extraterrestrials And Search For UFOs](https://www.forbes.com/sites/jimdobson/2018/01/28/the-worlds-8-best-places-to-hunt-for-extraterrestrials-and-search-for-ufos/#3c083c7b2ddb) all U.S. locations --- Area 51 in Nevada, Sedona, Arizona, and Joshua Tree, California --- are in the western United States.  
+  
+Although the stereotypical UFO is disc-shaped and can be spotted in the Midwest, I hypothesize that an analysis of the UFO sighting reports from NUFORC will reveal that is not the case.  
+  
+## Process  
+### Data Collection  
+The data set analyzed in this report was downloaded from [data.world](https://data.world/timothyrenner/ufo-sightings) where it was published by user timothyenner on Oct. 25, 2017. Because the data set was uploaded in October 2017, it only includes reports made prior to that data.  
+  
+### Data Cleaning  
+When downloaded, the .csv file from data.world is 164.1 MB and contains 112,097 rows of data.  
+  
+In Microsoft Excel, I deleted columns 'stats,' 'report_link,' 'text,' 'posted,' 'city_latitude' and 'city_longitude' because they were not necessary to my analysis. I also deleted the 'duration' column as well because the units of the inputs were not standardized (seconds, minutes, hours, etc.).  
+  
+I also deleted all rows containing incomplete reports (i.e. reports with no listed data or no state). To all rows which failed to include an input to the 'shape' column, I input "unspecified."  
+  
+Finally, I removed all rows which contained data regarding sightings which happened outside of the 50 states and the District of Columbia. To do this, I filtered the 'state' column of the data set and removed the following values: AB, BC, MB, NB, NL, NS, NT, ON, PE, PR, QC, SK, VI and YT.   
+  
+What remains are 97,414 rows of data. The cleaned data set analyzed in this report is available on [github](https://github.com/margaretmalone/ufo_sightings).  
+  
+### Coding with R & Graphing  
+The code below was used to import the data and isolate the data regarding shape and location.  
+  
+```{r eval = FALSE}
+library(tidyverse)
+nuforc <- read.csv("~/R/ufos/nuforc.csv")
+shape <- nuforc %>%
+  count(shape, sort = TRUE)
+mystate <- nuforc %>%
+  count(state, sort = TRUE)
+```
+  
+To create the graph of reported UFO shapes pictured later in this report, I used the following code.  
+  
+```{r eval = FALSE}
+library(ggplot2)
+library(ggthemes)
+shape_plot <- shape %>%
+  top_n(20) %>%
+  ggplot(aes(reorder(shape, n), n)) +
+  geom_bar(stat = "identity") + coord_flip() +
+  labs(y = "count", x = "shape") +
+  ggtitle("Shape of UFOs spotted in the U.S.") +
+  theme_minimal()
+```
+  
+In order to map the sightings by state, I had to copy the data frame 'mystate' I created with the code above into Google Sheets. Next, I added a column containing [population estimates](https://en.wikipedia.org/wiki/List_of_U.S._states_and_territories_by_population) for each state in 2017. I divided the count of sightings in each state by the states' respective populations to calculate the the percentage of state residents who have reported UFO sightings. These percentages I then used to create the map pictured later in this report. This file (sans map) is also available for download from [github](https://github.com/margaretmalone/ufo_sightings).  
+  
+I then discovered a wonderful package called [googleVis](https://cran.r-project.org/web/packages/googleVis/vignettes/googleVis.pdf), which allowed me to create this graph within rStudio instead. Having already created this new data set, I downloaded it as a .xlsx file from Google Sheets (the same file available on github) and uploaded that to rStudio for manipulation. Below is the code used to create the map.
+  
+```{r googleVisCode, eval=FALSE}
+library(knitr)
+library(readxl)
+state_sightings <- read_excel("/Applications/state_sightings.xlsx")
+suppressPackageStartupMessages(library(googleVis))
+op <- options(gvis.plot.tag='chart')
+map <- gvisGeoChart(state_sightings, "state", "sightings/pop.", options=list(region="US", displayMode="regions", resolution="provinces", width=600, height=400))
+plot(map)
+```  
+  
+This turned out to be a lot more complicated than I originally thought it would be when I found the googleVis package. Ultimately, in order to get my map to display as a map and not as HTML in my knitted report, I had to use homebrew to update pandoc on my laptop. This was a process that I did not quite understand, and I am grateful for my professor's assistance with it. Before updating pandoc, depending on my output and options, knitting my rMarkdown file spit out the aforementioned HTML or returned error 67 and said pandoc was unable to fetch information from Google.  
+  
+## Analysis  
+Based on the following graph and map, my hypothesis is correct. The most common UFO "shape" was not a shape at all, but rather light. The second most common reported shape was a circle, which is closer to the stereotype, but still not the classic disk pictured in so many movies and television shows. In fact, disk was not even in the top five reported shapes coming in at eighth place.  
+  
+```{r plot, echo=FALSE, message=FALSE, error=FALSE}
+library(tidyverse)
+library(ggplot2)
+library(ggthemes)
+nuforc <- read.csv("~/R/ufos/nuforc.csv")
+shape <- nuforc %>%
+  count(shape, sort = TRUE)
+shape_plot <- shape %>%
+  top_n(20) %>%
+  ggplot(aes(reorder(shape, n), n)) +
+  geom_bar(stat = "identity") + coord_flip() +
+  labs(y = "count", x = "shape") +
+  ggtitle("Shape of UFOs spotted in the U.S.") +
+  theme_minimal()
+plot(shape_plot)
+```
+  
+And the top five states for UFO spotting according to these reports? Those would be Washington, Vermont, Montana, Alaska and Maine. The Midwest does not make an appearance on this list until New Mexico shows up again in eighth place.  
+
+```{r googleVis, echo=FALSE, message=FALSE, warning=FALSE, paged.print=FALSE, results='asis', tidy=FALSE}
+library(knitr)
+library(readxl)
+state_sightings <- read_excel("/Applications/state_sightings.xlsx")
+suppressPackageStartupMessages(library(googleVis))
+op <- options(gvis.plot.tag='chart')
+map <- gvisGeoChart(state_sightings, "state", "sightings/pop.", options=list(region="US", displayMode="regions", resolution="provinces", width=600, height=400))
+plot(map)
+```   
+
+## Discussion  
+So, if you're interested in craning your eyes toward the sky in hopes of spotting some mysterious UFOs for yourself, keep your eyes peeled for strange lights in New England and the Northwest.  
+  
+These findings are probably not surprising to experts of saucerology or ufology (Yes, both real words). In 1947, pilot Kenneth Arnold made what many consider to be the first report of unidentified flying objects in the United States after he spotted nine glowing bright blue-white objects flying in a “V” formation over Mount Rainier in Washington. He estimated that the objects were traveling at 1700mph and said their motion reminded him of “a saucer if you skip it across water.” (Newspapers mistakenly reported that the objects were shaped like saucers, leading to the popularization of the term “flying saucer” and potentially sparking the stereotypical shape in pop culture, too). Arnold said he initially thought he was seeing the test flights of military aircraft, but the military later said they had been not been conducting no test flights at the time, and a prospector on nearby Mt. Adams saw the objects at around the same time as Arnold.^3^  
+  
+But since Arnold's famous sighting, many ufologists (Yes, that's what they call themselves) have trekked to the mountain in hopes of experiencing their own close encounters on the "Saucer Magnet."^4^  
+  
+Whether or not you are believer in life beyond earth, it is undeniable that Americans' interest in UFOs will not be be diminishing anytime soon. Arguably, modern interest in the subject of UFOs is fueled heavily by modern technologies. In December 2017, the U.S. Defense Department declassified two videos documenting encounters between U.S. Navy pilots and some unidentified aircraft.  
+    
+Christopher Mellon, deputy assistant secretary of defense for intelligence during both the Clinton and George W. Bush administrations, published a column in The Washington Post regarding the videos. He said, "The videos, along with observations by pilots and radar operators, appear to provide evidence of the existence of aircraft far superior to anything possessed by the United States or its allies ... Is it possible that America has been technologically leap-frogged by Russia or China? Or, as many people wondered after the videos were first published by the New York Times in December, might they be evidence of some alien civilization? Unfortunately, we have no idea, because we aren’t even seeking answers."  
+  
+According to Mellon, government officials are not making the effort to investigate such incidents at length because "nobody wants to be 'the alien guy' in the national security bureaucracy; nobody wants to be ridiculed or sidelined for drawing attention to the issue."^5^ Until that changes, these incidents will remain unexplained, these aircraft unidentified, and the public speculative.  
+  
+## References
+1. [https://theculturetrip.com/north-america/usa/articles/why-are-so-many-ufo-sightings-reported-in-the-usa/](https://theculturetrip.com/north-america/usa/articles/why-are-so-many-ufo-sightings-reported-in-the-usa/)  
+2. [https://edition.cnn.com/2017/12/19/us/ufo-sightings-history/index.html](https://edition.cnn.com/2017/12/19/us/ufo-sightings-history/index.html)
+3. [https://www.history.com/topics/kenneth-arnold](https://www.history.com/topics/kenneth-arnold)
+4. [https://www.csicop.org/SI/show/mount_rainier_saucer_magnet](https://www.csicop.org/SI/show/mount_rainier_saucer_magnet)
+5. [https://www.washingtonpost.com/outlook/the-military-keeps-encountering-ufos-why-doesnt-the-pentagon-care/2018/03/09/242c125c-22ee-11e8-94da-ebf9d112159c_story.html?noredirect=on&utm_term=.0b293a3e89a0](https://www.washingtonpost.com/outlook/the-military-keeps-encountering-ufos-why-doesnt-the-pentagon-care/2018/03/09/242c125c-22ee-11e8-94da-ebf9d112159c_story.html?noredirect=on&utm_term=.0b293a3e89a0)
